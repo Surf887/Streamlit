@@ -228,3 +228,124 @@ def status_table(rows: Sequence[Mapping], columns: Mapping[str, str], *,
 def empty_state(title: str, hint: str | None = None) -> None:
     """Show instead of an empty chart/table when a filter returns no data."""
     _render(f'<div class="uk-empty"><b>{_e(title)}</b>{_e(hint) if hint else ""}</div>')
+
+
+# ----------------------------------------------------------------------------
+# App pages: notices, steps, totals, checklists, facts, sidebar
+# ----------------------------------------------------------------------------
+def banner(title: str, detail: str | None = None, status: str = "info") -> None:
+    """Slim page-level notice under the header (data caveat, unsaved state, not-approved warning).
+    One per page at most. For field-level validation use the widget's own error state."""
+    status = status if status in STATUSES else "info"
+    body = f"<b>{_e(title)}</b>" + (f"<span>{_e(detail)}</span>" if detail else "")
+    _render(f'<div class="uk-banner uk-banner-{status}"><i class="uk-i uk-i-{status}"></i><div>{body}</div></div>')
+
+
+def stepper(steps: Sequence[str], current: int) -> None:
+    """Horizontal progress through a multi-step task (import: Upload > Map > Review > Apply).
+    `current` is the 0-based index of the active step; earlier steps show as done."""
+    out = []
+    for i, name in enumerate(steps):
+        cls = "is-done" if i < current else "is-current" if i == current else ""
+        dot = '<i class="uk-i uk-i-check"></i>' if i < current else str(i + 1)
+        if i:
+            out.append(f'<li class="uk-step-line {"is-done" if i <= current else ""}" aria-hidden="true"></li>')
+        out.append(f'<li class="uk-step {cls}"><span class="uk-step-dot uk-num">{dot}</span>{_e(name)}</li>')
+    _render(f'<ol class="uk-steps">{"".join(out)}</ol>')
+
+
+def stat_strip(items: Iterable[Mapping]) -> None:
+    """Compact row of totals above a table or editor (lighter than KPI cards).
+    Each item: dict(label, value, note=None, tone=None|'good'|'bad'|'warn')."""
+    cells = ""
+    for it in items:
+        tone = it.get("tone")
+        note = (f'<span class="uk-stat-note {"is-" + tone if tone in ("good", "bad", "warn") else ""}">'
+                f'{_e(str(it["note"]))}</span>') if it.get("note") else ""
+        cells += (f'<div class="uk-stat"><span class="uk-stat-label">{_e(str(it["label"]))}</span>'
+                  f'<span class="uk-stat-value uk-num">{_e(str(it["value"]))}</span>{note}</div>')
+    _render(f'<div class="uk-stats">{cells}</div>')
+
+
+def checklist(items: Iterable[Mapping]) -> None:
+    """Readiness list. Each item: dict(label, status, detail=None, meta=None).
+    status: good (done) | warning (needs attention) | critical (blocking) | neutral (not started)."""
+    icon = {"good": "check", "warning": "warning", "critical": "critical", "neutral": "neutral", "info": "info"}
+    rows = ""
+    for it in items:
+        st_ = it.get("status", "neutral")
+        st_ = st_ if st_ in STATUSES else "neutral"
+        detail = f'<div class="uk-check-detail">{_e(str(it["detail"]))}</div>' if it.get("detail") else ""
+        meta = f'<span class="uk-check-meta uk-num">{_e(str(it["meta"]))}</span>' if it.get("meta") else ""
+        rows += (f'<li><span class="uk-check-ico is-{st_}"><i class="uk-i uk-i-{icon[st_]}"></i></span>'
+                 f'<div class="uk-check-body"><div class="uk-check-title">{_e(str(it["label"]))}</div>{detail}</div>{meta}</li>')
+    _render(f'<ul class="uk-check">{rows}</ul>')
+
+
+def key_value(facts: Mapping[str, object], *, columns: int = 2) -> None:
+    """Read-only facts as label/value pairs (project identity, a selected record's details).
+    A value may be a (label, status) tuple to show a status pill."""
+    cells = ""
+    for k, v in facts.items():
+        val = pill_html(v[0], v[1]) if isinstance(v, (tuple, list)) and len(v) == 2 else _e(str(v))
+        cells += (f'<div class="uk-kv-item"><span class="uk-kv-label">{_e(str(k))}</span>'
+                  f'<span class="uk-kv-value uk-num">{val}</span></div>')
+    _render(f'<div class="uk-kv" style="--uk-kv-cols:{int(columns)}">{cells}</div>')
+
+
+def sidebar_context(app: str, facts: Mapping[str, object] | None = None) -> None:
+    """Top of the sidebar: app name plus the working context (project, period, status).
+    Call after st.navigation(...). A value may be a (label, status) tuple for a pill."""
+    box = ""
+    for k, v in (facts or {}).items():
+        val = pill_html(v[0], v[1]) if isinstance(v, (tuple, list)) and len(v) == 2 else \
+            f'<span class="uk-side-value">{_e(str(v))}</span>'
+        box += f'<div><div class="uk-side-label">{_e(str(k))}</div>{val}</div>'
+    box = f'<div class="uk-side-box">{box}</div>' if box else ""
+    with st.sidebar:
+        _render(f'<div class="uk-side"><div class="uk-side-app">{_e(app)}</div>{box}</div>')
+
+
+# ----------------------------------------------------------------------------
+# Tables and editable grids
+# ----------------------------------------------------------------------------
+def col_money(label: str, *, unit: str = "M", currency: str = "$", decimals: int = 1, **kw):
+    """Money column for values already scaled to `unit` (e.g. $M). Right-aligned, grouped."""
+    return st.column_config.NumberColumn(label, format=f"{currency}%,.{decimals}f{unit}", **kw)
+
+
+def col_number(label: str, *, decimals: int = 0, suffix: str = "", signed: bool = False, **kw):
+    """Plain number column, right-aligned and grouped. Put the unit in the header or the card
+    caption ("Budget, $M") rather than repeating it in every cell. signed=True shows +/-
+    (use it for variances)."""
+    return st.column_config.NumberColumn(label, format=f"%{'+' if signed else ''},.{decimals}f{suffix}", **kw)
+
+
+def col_pct(label: str, *, decimals: int = 1, **kw):
+    """Percent column for values stored as 0-100."""
+    return st.column_config.NumberColumn(label, format=f"%.{decimals}f%%", **kw)
+
+
+def col_progress(label: str, **kw):
+    """Progress bar column for values stored as 0-1 fractions."""
+    return st.column_config.ProgressColumn(label, min_value=0.0, max_value=1.0, format="percent", **kw)
+
+
+def col_text(label: str, *, width: str | None = None, **kw):
+    return st.column_config.TextColumn(label, width=width, **kw)
+
+
+def grid(df, *, columns: Mapping | None = None, height: int | str = "auto", key: str | None = None, **kw):
+    """Read-only table for larger or sortable data. Put it inside a ui.card.
+    `columns` = {column_name: ui.col_money(...), ...}; unlisted columns keep defaults.
+    Extra keyword arguments go to st.dataframe (e.g. on_select="rerun", selection_mode="single-row")."""
+    return st.dataframe(df, hide_index=True, column_config=dict(columns or {}), height=height, key=key, **kw)
+
+
+def editor(df, *, columns: Mapping | None = None, editable: Sequence[str] = (), key: str,
+           height: int | str = "auto", num_rows: str = "fixed", **kw):
+    """Editable grid. Only the columns named in `editable` can be changed; the rest are locked,
+    so users can tell inputs from calculated values. Returns the edited DataFrame."""
+    locked = [c for c in df.columns if c not in editable]
+    return st.data_editor(df, hide_index=True, column_config=dict(columns or {}), disabled=locked,
+                          height=height, num_rows=num_rows, key=key, **kw)

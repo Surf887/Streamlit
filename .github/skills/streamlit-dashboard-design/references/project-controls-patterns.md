@@ -1,8 +1,9 @@
 # Project controls patterns
 
-What to put on a project controls page, and which component shows it. Thresholds and
-definitions here are common defaults: confirm them with the user, because every
-project sets its own.
+What to put on a project controls dashboard, and which component shows it. For the
+other page types (workspaces, forms, imports, registers, period close) see
+`page-types.md`. Thresholds and definitions here are common defaults: confirm them
+with the user, because every project sets its own.
 
 ## Contents
 - Pages and the question each answers
@@ -72,6 +73,8 @@ wrong, not just "Red".
 | Which areas, packages or disciplines are over or under? | `ui.variance_bars` |
 | Is performance improving or deteriorating? | `ui.index_trend` |
 | Which milestones have slipped, and by how much? | `ui.milestone_slip` |
+| How is cost phased by month, and what is still to come? | `ui.monthly_bars` |
+| Is contingency being used faster than planned? | `ui.rundown` |
 | How far along is each discipline against plan? | `ui.progress_list` |
 | What are the specific items (changes, risks, packages)? | `ui.status_table` or `st.dataframe` |
 | A single headline value | A KPI card — not a chart |
@@ -84,9 +87,9 @@ the scheduling tool).
 ## Tables
 
 - Up to about 12 rows with a status: `ui.status_table` (pills, right-aligned numbers).
-- Larger or sortable data: `st.dataframe(df, hide_index=True, column_config={...})`
-  inside a `ui.card`. Use `st.column_config.NumberColumn(format=...)` for money and
-  `st.column_config.ProgressColumn` for percent complete.
+- Larger or sortable data: `ui.grid(df, columns={...})` inside a `ui.card`; editable
+  data: `ui.editor`. Use `ui.col_number` for money (unit in the header) and
+  `ui.col_progress` for percent complete.
 - Order rows by what matters (largest variance, latest date), not alphabetically.
 - Right-align numbers and dates; keep one unit per column and name it in the header
   ("Value, $M").
