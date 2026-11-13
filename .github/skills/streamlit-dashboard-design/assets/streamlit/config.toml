@@ -1,0 +1,59 @@
+# Streamlit theme for the dashboard design system.
+# Lives at <project>/.streamlit/config.toml. Keep the colours here in sync with
+# ui_kit/theme.py (LIGHT / DARK tokens) - they are the same values.
+
+[server]
+enableStaticServing = true          # serves ./static/ so the bundled font loads without internet
+
+[client]
+toolbarMode = "minimal"             # hides the developer toolbar from viewers
+
+# --- Font: Inter, bundled in ./static (no Google Fonts call, works behind a firewall)
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/InterVariable.woff2"
+weight = "100 900"
+style = "normal"
+
+# --- Shared by light and dark
+[theme]
+font = "Inter, 'Segoe UI', system-ui, sans-serif"
+headingFont = "Inter, 'Segoe UI', system-ui, sans-serif"
+baseFontSize = 14
+headingFontSizes = ["24px", "18px", "15px", "14px", "13px", "12px"]
+headingFontWeights = [600, 600, 600, 600, 600, 600]
+baseRadius = "8px"
+buttonRadius = "8px"
+showWidgetBorder = true
+showSidebarBorder = true
+linkUnderline = false
+
+# --- Light
+[theme.light]
+primaryColor = "#256ABF"
+backgroundColor = "#F5F6F8"             # page plane
+secondaryBackgroundColor = "#FFFFFF"    # inputs, widgets
+textColor = "#111827"
+borderColor = "#E3E6EB"
+dataframeBorderColor = "#E9ECF0"
+dataframeHeaderBackgroundColor = "#F5F6F8"
+chartCategoricalColors = ["#2A78D6", "#EB6834", "#1BAF7A", "#EDA100", "#E87BA4", "#008300", "#6250D6", "#E34948"]
+
+[theme.light.sidebar]
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F6F8"
+
+# --- Dark
+[theme.dark]
+primaryColor = "#3987E5"
+backgroundColor = "#0D1117"
+secondaryBackgroundColor = "#161B22"
+textColor = "#E6E9EE"
+borderColor = "#2A313C"
+dataframeBorderColor = "#232A34"
+dataframeHeaderBackgroundColor = "#1B2129"
+chartCategoricalColors = ["#3987E5", "#D95926", "#199E70", "#C98500", "#D55181", "#008300", "#9085E9", "#E66767"]
+
+[theme.dark.sidebar]
+backgroundColor = "#11161D"
+secondaryBackgroundColor = "#1B2129"
