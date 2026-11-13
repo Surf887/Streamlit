@@ -76,6 +76,12 @@ def _wrap(label: str, width: int = 12) -> str:
     return "<br>".join(lines + [cur])
 
 
+def _mix(color: str, base: str, amount: float) -> str:
+    """Blend `color` toward `base` (both #RRGGBB). amount=0 gives color, 1 gives base."""
+    c, b = (int(color[i:i + 2], 16) for i in (1, 3, 5)), (int(base[i:i + 2], 16) for i in (1, 3, 5))
+    return "#" + "".join(f"{round(x + (y - x) * amount):02X}" for x, y in zip(c, b))
+
+
 def _num(prefix: str, suffix: str, decimals: int) -> str:
     """d3 hover/tick format pieces -> a hovertemplate value token."""
     return f"{prefix}%{{VAL:,.{decimals}f}}{suffix}"
@@ -267,4 +273,67 @@ def milestone_slip(df: pd.DataFrame, *, name: str, baseline: str, forecast: str,
     fig.update_layout(margin=dict(r=64))
     fig.update_xaxes(showgrid=True, tickformat="%b\n%Y")
     fig.update_yaxes(showgrid=False, tickfont=dict(size=12.5, color=t["ink"]))
+    return fig
+
+
+# ----------------------------------------------------------------------------
+# 6. Rundown - a balance being drawn down against its planned curve (contingency)
+# ----------------------------------------------------------------------------
+def rundown(df: pd.DataFrame, *, x: str, planned: str, actual: str, data_date=None,
+            names: Mapping[str, str] | None = None, prefix: str = "", suffix: str = "",
+            decimals: int = 0, height: int = 300) -> go.Figure:
+    """Remaining balance over time: planned curve (grey) vs actual (blue), from zero.
+    Actual below the plan line means the balance is being used faster than planned."""
+    t = tokens()
+    n = {"planned": "Planned", "actual": "Actual"}
+    n.update(names or {})
+    tmpl = "%{fullData.name}: <b>" + _num(prefix, suffix, decimals).replace("VAL", "y") + "</b><extra></extra>"
+    fig = go.Figure()
+    fig.add_scatter(x=df[x], y=df[planned], name=n["planned"], mode="lines",
+                    line=dict(color=t["context"], width=2), hovertemplate=tmpl)
+    fig.add_scatter(x=df[x], y=df[actual], name=n["actual"], mode="lines",
+                    line=dict(color=t["series"][0], width=2.5), hovertemplate=tmpl)
+    last = df[[x, actual]].dropna().iloc[-1]
+    fig.add_scatter(x=[last[x]], y=[last[actual]], mode="markers", showlegend=False, hoverinfo="skip",
+                    marker=dict(size=9, color=t["series"][0], line=dict(color=t["surface"], width=2)))
+    style(fig, height=height)
+    fig.update_layout(hovermode="x unified")
+    fig.update_yaxes(tickprefix=prefix, ticksuffix=suffix, tickformat=",.0f", rangemode="tozero")
+    fig.update_xaxes(hoverformat="%b %Y", tickformat="%b\n%Y")
+    fig.add_annotation(x=last[x], y=last[actual], showarrow=False, xanchor="left", yanchor="bottom",
+                       xshift=8, yshift=2, font=dict(size=12, color=t["ink"]),
+                       text=f"<b>{prefix}{last[actual]:,.{decimals}f}{suffix}</b>")
+    if data_date is not None:
+        d = pd.Timestamp(data_date)
+        fig.add_shape(type="line", x0=d, x1=d, y0=0, y1=1, yref="paper", line=dict(color=t["ink_3"], width=1))
+    return fig
+
+
+# ----------------------------------------------------------------------------
+# 7. Monthly phasing - period values: actual to date, forecast to go, plan as a line
+# ----------------------------------------------------------------------------
+def monthly_bars(df: pd.DataFrame, *, x: str, actual: str, forecast: str | None = None,
+                 planned: str | None = None, names: Mapping[str, str] | None = None,
+                 prefix: str = "", suffix: str = "", decimals: int = 0, height: int = 300) -> go.Figure:
+    """Per-period bars. Actual and forecast are the same measure, so they share one hue:
+    actual solid, forecast lighter. The plan is a thin grey line on the same axis."""
+    t = tokens()
+    n = {"actual": "Actual", "forecast": "Forecast", "planned": "Planned"}
+    n.update(names or {})
+    tmpl = "%{fullData.name}: <b>" + _num(prefix, suffix, decimals).replace("VAL", "y") + "</b><extra></extra>"
+    c = t["series"][0]
+    fig = go.Figure()
+    fig.add_bar(x=df[x], y=df[actual], name=n["actual"], marker=dict(color=c, cornerradius=3),
+                hovertemplate=tmpl)
+    if forecast:
+        fig.add_bar(x=df[x], y=df[forecast], name=n["forecast"], hovertemplate=tmpl,
+                    marker=dict(color=_mix(c, t["surface"], 0.6), cornerradius=3))
+    if planned:
+        fig.add_scatter(x=df[x], y=df[planned], name=n["planned"], mode="lines",
+                        line=dict(color=t["context"], width=2, shape="spline", smoothing=0.6),
+                        hovertemplate=tmpl)
+    style(fig, height=height)
+    fig.update_layout(barmode="overlay", bargap=0.3, hovermode="x unified")
+    fig.update_yaxes(tickprefix=prefix, ticksuffix=suffix, tickformat=",.0f", rangemode="tozero")
+    fig.update_xaxes(hoverformat="%b %Y", tickformat="%b\n%Y")
     return fig

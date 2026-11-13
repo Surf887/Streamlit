@@ -87,6 +87,7 @@ ICONS = {
     "critical": f'<circle cx="6" cy="6" r="5.25" {_S}/><path d="M4.2 4.2l3.6 3.6M7.8 4.2L4.2 7.8" {_S}/>',
     "info": f'<circle cx="6" cy="6" r="5.25" {_S}/><path d="M6 5.6v3" {_S}/><circle cx="6" cy="3.6" r=".8"/>',
     "neutral": f'<circle cx="6" cy="6" r="5.25" {_S}/><path d="M3.8 6h4.4" {_S}/>',
+    "check": '<path d="M2.6 6.4l2.3 2.3 4.6-5.2" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
     "up": '<path d="M6 2l5 8H1z"/>',
     "down": '<path d="M6 10l5-8H1z"/>',
 }
@@ -218,6 +219,72 @@ _CSS = """
 .uk-table .r{text-align:right;padding-right:0;padding-left:12px;}
 .uk-table th.r{padding-right:0;}
 
+/* ---------- banner (page-level notice) ---------- */
+.uk-banner{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.45;}
+.uk-banner .uk-i{width:14px;height:14px;margin-top:2px;}
+.uk-banner b{font-weight:650;margin-right:6px;}
+.uk-banner-good{color:var(--uk-good-fg);background:var(--uk-good-bg);}
+.uk-banner-warning{color:var(--uk-warning-fg);background:var(--uk-warning-bg);}
+.uk-banner-critical{color:var(--uk-critical-fg);background:var(--uk-critical-bg);}
+.uk-banner-info{color:var(--uk-info-fg);background:var(--uk-info-bg);}
+.uk-banner-neutral{color:var(--uk-neutral-fg);background:var(--uk-neutral-bg);}
+
+/* ---------- stepper ---------- */
+.uk-steps{display:flex;align-items:center;gap:0;list-style:none;margin:0!important;padding:2px 0!important;}
+.uk-steps li{margin:0!important;padding:0;}
+.uk-step{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--uk-ink-3);white-space:nowrap;}
+.uk-step-dot{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%%;
+  font-size:11.5px;font-weight:650;border:1.5px solid var(--uk-border-strong);color:var(--uk-ink-3);background:var(--uk-surface);}
+.uk-step.is-current{color:var(--uk-ink);font-weight:650;}
+.uk-step.is-current .uk-step-dot{border-color:var(--uk-accent);background:var(--uk-accent);color:#fff;}
+.uk-step.is-done{color:var(--uk-ink-2);}
+.uk-step.is-done .uk-step-dot{border-color:var(--uk-accent);color:var(--uk-accent);}
+.uk-step.is-done .uk-step-dot .uk-i{width:11px;height:11px;}
+.uk-step-line{flex:1 1 24px;min-width:16px;max-width:72px;height:1.5px;background:var(--uk-border-strong);margin:0 12px;}
+.uk-step-line.is-done{background:var(--uk-accent);}
+
+/* ---------- stat strip (compact totals above a table) ---------- */
+.uk-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));background:var(--uk-surface);
+  border:1px solid var(--uk-border);border-radius:var(--uk-radius);box-shadow:var(--uk-shadow);overflow:hidden;}
+.uk-stat{display:flex;flex-direction:column;gap:3px;padding:12px 18px;box-shadow:-1px 0 0 var(--uk-border);min-width:0;}
+.uk-stat-label{font-size:12px;font-weight:500;color:var(--uk-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.uk-stat-value{font-size:18px;font-weight:650;letter-spacing:-.015em;line-height:1.25;white-space:nowrap;}
+.uk-stat-note{font-size:12px;color:var(--uk-ink-3);white-space:nowrap;}
+.uk-stat-note.is-good{color:var(--uk-good-fg);} .uk-stat-note.is-bad{color:var(--uk-critical-fg);}
+.uk-stat-note.is-warn{color:var(--uk-warning-fg);}
+
+/* ---------- checklist ---------- */
+.uk-check{list-style:none;margin:0!important;padding:0!important;}
+.uk-check li{display:flex;align-items:flex-start;gap:12px;margin:0!important;padding:11px 0;border-bottom:1px solid var(--uk-border);}
+.uk-check li:last-child{border-bottom:0;padding-bottom:2px;}
+.uk-check-ico{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%%;flex:none;margin-top:1px;}
+.uk-check-ico .uk-i{width:12px;height:12px;}
+.uk-check-ico.is-good{color:var(--uk-good-fg);background:var(--uk-good-bg);}
+.uk-check-ico.is-warning{color:var(--uk-warning-fg);background:var(--uk-warning-bg);}
+.uk-check-ico.is-critical{color:var(--uk-critical-fg);background:var(--uk-critical-bg);}
+.uk-check-ico.is-neutral,.uk-check-ico.is-info{color:var(--uk-neutral-fg);background:var(--uk-neutral-bg);}
+.uk-check-body{flex:1;min-width:0;}
+.uk-check-title{font-size:13.5px;font-weight:550;color:var(--uk-ink);}
+.uk-check-detail{font-size:12.5px;color:var(--uk-ink-3);margin-top:1px;}
+.uk-check-meta{font-size:12.5px;color:var(--uk-ink-3);white-space:nowrap;margin-top:2px;}
+
+/* ---------- key / value facts ---------- */
+.uk-kv{display:grid;grid-template-columns:repeat(var(--uk-kv-cols,2),minmax(0,1fr));gap:14px 24px;}
+.uk-kv-item{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.uk-kv-label{font-size:12px;color:var(--uk-ink-3);}
+.uk-kv-value{font-size:13.5px;font-weight:550;color:var(--uk-ink);overflow-wrap:anywhere;}
+
+/* ---------- sidebar: app name and context sit above the navigation ---------- */
+[data-testid="stSidebarContent"]{display:flex;flex-direction:column;}
+[data-testid="stSidebarUserContent"]{order:1;padding-top:0;padding-bottom:.5rem;}
+[data-testid="stSidebarNav"]{order:2;}
+[data-testid="stSidebarNavSeparator"]{display:none;}
+.uk-side{display:flex;flex-direction:column;gap:10px;padding:2px 0 6px;}
+.uk-side-app{font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--uk-ink);}
+.uk-side-box{border:1px solid var(--uk-border);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--uk-surface);}
+.uk-side-label{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--uk-ink-3);}
+.uk-side-value{font-size:13px;font-weight:600;color:var(--uk-ink);line-height:1.3;}
+
 /* ---------- empty state ---------- */
 .uk-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
   padding:36px 16px;color:var(--uk-ink-3);font-size:13px;text-align:center;}
@@ -237,7 +304,9 @@ def css() -> str:
 
 
 def setup_page(title: str, *, icon: str | None = None, sidebar: str = "auto") -> None:
-    """Call once, first thing in every page: wide layout + design-system CSS."""
+    """First Streamlit call of the app: wide layout + design-system CSS.
+    Single-file app: call it at the top of that file. Multi-page app (st.navigation):
+    call it once in the entry file, before st.navigation - not again in each page."""
     st.set_page_config(page_title=title, page_icon=icon, layout="wide",
                        initial_sidebar_state=sidebar)
     st.html(f"<style>{css()}</style>")

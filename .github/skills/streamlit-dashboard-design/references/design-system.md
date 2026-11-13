@@ -21,6 +21,7 @@ rebranding. Page code never needs it.
 | `.streamlit/config.toml` | Streamlit's own theme: font, base size, radius, widget colours |
 | `static/InterVariable.woff2` | The font, served by the app itself (no internet needed) |
 | `ui_kit/theme.py` | Tokens (`LIGHT`, `DARK`), icons, all CSS, `setup_page` |
+| `ui_kit/components.py` (lower half) | App components: banner, stepper, stat strip, checklist, key/value, sidebar, table helpers |
 | `ui_kit/components.py` | HTML components and number formatters |
 | `ui_kit/charts.py` | Plotly base style and chart recipes |
 
@@ -101,6 +102,12 @@ Constraints of `st.html` (it sanitises its input):
   change between versions. Stable hooks are `data-testid` attributes and the
   `st-key-<key>` class that `st.container(key=...)` adds, which is how `ui.card`
   is styled.
+- Streamlit's own markdown styles add padding and margins to `<ul>`, `<ol>` and
+  `<li>`. A component built on a list resets them with `!important` (see
+  `.uk-check`).
+- The sidebar is reordered with three `data-testid` rules so `ui.sidebar_context`
+  appears above the navigation. If a future Streamlit renames those hooks, the block
+  simply falls back to below the navigation.
 
 ## Adding a chart
 
@@ -152,3 +159,10 @@ constant. Never hard-code a colour that only works in one mode.
   the installed version predates them: move the `[theme.light]` values into `[theme]`
   and delete both mode sections. The app is then light-only.
 - `ui.card` falls back to content height where `height="stretch"` is unsupported.
+- `ui.col_number` / `ui.col_money` use `%,` thousands separators in number formats,
+  and several example pages pass `width="stretch"` to buttons. On an older Streamlit
+  that rejects either, drop the comma from the format or use
+  `use_container_width=True`.
+- Material Symbols icons in the sidebar are bundled with Streamlit. The browser-tab
+  icon for a page is fetched from Google's servers and silently falls back to the
+  default when blocked.

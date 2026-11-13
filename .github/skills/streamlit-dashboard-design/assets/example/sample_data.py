@@ -6,8 +6,13 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+PROJECT = "Kestrel Gas Plant Expansion"
 DATA_DATE = pd.Timestamp("2026-10-31")
+MONTH = pd.DateOffset(months=1)
 BUDGET = 1240.0  # $M approved budget
+AREAS = ["Process units", "Utilities & offsites", "Pipelines", "Buildings",
+         "Electrical & instrumentation", "Owner's costs"]
+CHANGE_STATUS = {"Approved": "good", "Pending": "warning", "In dispute": "critical", "Rejected": "neutral"}
 
 
 def _logistic(n: int, mid: float, k: float) -> np.ndarray:
@@ -109,4 +114,112 @@ def change_log() -> list[dict]:
         {"id": "CR-0137", "title": "Control room HVAC upgrade", "area": "Buildings", "value": 1.2, "status": ("Approved", "good")},
         {"id": "CR-0133", "title": "Cable tray redesign", "area": "Electrical & instrumentation", "value": 2.7, "status": ("Rejected", "neutral")},
         {"id": "CR-0131", "title": "Compressor vendor delay claim", "area": "Process units", "value": 7.6, "status": ("In dispute", "critical")},
+    ]
+
+
+# ---------------------------------------------------------------------------
+# App pages
+# ---------------------------------------------------------------------------
+def cost_activities() -> pd.DataFrame:
+    """One row per cost activity, $M."""
+    rows = [
+        ("Process units", "Compression train", 212.0, 148.3, 196.5, 226.4, 0.66),
+        ("Process units", "Gas treating unit", 168.0, 96.1, 141.0, 177.9, 0.55),
+        ("Process units", "Dehydration and NGL recovery", 131.0, 71.4, 118.2, 138.1, 0.52),
+        ("Utilities & offsites", "Power and steam", 96.0, 61.7, 88.0, 101.3, 0.63),
+        ("Utilities & offsites", "Tank farm", 74.0, 47.9, 66.4, 78.9, 0.61),
+        ("Utilities & offsites", "Flare and relief", 41.0, 19.6, 34.1, 43.6, 0.44),
+        ("Pipelines", "Inlet pipeline", 88.0, 62.2, 80.5, 84.1, 0.74),
+        ("Pipelines", "Export pipeline", 67.0, 44.0, 59.8, 64.7, 0.69),
+        ("Buildings", "Control room and substations", 52.0, 30.8, 46.0, 54.2, 0.58),
+        ("Buildings", "Workshops and warehouse", 29.0, 15.1, 24.4, 29.9, 0.51),
+        ("Electrical & instrumentation", "Electrical distribution", 78.0, 33.6, 61.2, 83.9, 0.41),
+        ("Electrical & instrumentation", "Instrumentation and controls", 62.0, 21.5, 44.7, 65.7, 0.33),
+        ("Owner's costs", "Project management team", 86.0, 41.2, 41.2, 83.4, 0.48),
+        ("Owner's costs", "Insurance and permits", 56.0, 11.2, 22.5, 53.9, 0.20),
+    ]
+    df = pd.DataFrame(rows, columns=["Area", "Activity", "Budget", "Actual", "Committed", "Forecast", "Progress"])
+    df["Variance"] = (df["Forecast"] - df["Budget"]).round(1)
+    comments = {"Compression train": "Vendor delay claim under review",
+                "Electrical distribution": "Cable tray redesign, extra hours",
+                "Inlet pipeline": "Material savings on line pipe"}
+    df["Comment"] = df["Activity"].map(comments).fillna("")
+    return df[["Area", "Activity", "Budget", "Actual", "Committed", "Forecast", "Variance", "Progress", "Comment"]]
+
+
+def phasing() -> pd.DataFrame:
+    """Per-month cost, $M: actual up to the data date, forecast after it, plan throughout."""
+    c = s_curve()
+    out = pd.DataFrame({"month": c["month"], "planned": c["planned"].diff().fillna(c["planned"])})
+    out["actual"] = c["actual"].diff().fillna(c["actual"])
+    out["forecast"] = c["forecast"].diff().clip(lower=0)      # months after the data date
+    return out
+
+
+def contingency() -> pd.DataFrame:
+    months = pd.date_range("2025-01-31", "2027-12-31", freq="ME")
+    n = len(months)
+    planned = 110 * (1 - _logistic(n, mid=20, k=0.2))
+    i = int(np.searchsorted(months, DATA_DATE))
+    actual = np.full(n, np.nan)
+    rng = np.random.default_rng(11)
+    drift = np.clip(np.linspace(0, 1, i + 1) ** 1.4 + rng.normal(0, 0.04, i + 1), 0, None)
+    drift = drift / drift[-1] * (planned[i] - 58.0)           # ends at the reported $58M
+    actual[: i + 1] = planned[: i + 1] - drift
+    return pd.DataFrame({"month": months, "planned": planned, "actual": actual})
+
+
+def changes() -> pd.DataFrame:
+    rows = [
+        ("CR-0142", "Flare header rerouting", "Process units", 6.4, "Pending", "2026-10-21"),
+        ("CR-0141", "Additional cathodic protection", "Pipelines", 0.9, "Pending", "2026-10-17"),
+        ("CR-0139", "Additional piling, tank farm", "Utilities & offsites", 4.9, "Approved", "2026-10-06"),
+        ("CR-0137", "Control room HVAC upgrade", "Buildings", 1.2, "Approved", "2026-09-28"),
+        ("CR-0136", "Substation relocation", "Electrical & instrumentation", 3.8, "Approved", "2026-09-19"),
+        ("CR-0133", "Cable tray redesign", "Electrical & instrumentation", 2.7, "Rejected", "2026-09-02"),
+        ("CR-0131", "Compressor vendor delay claim", "Process units", 7.6, "In dispute", "2026-08-25"),
+        ("CR-0128", "Warehouse racking scope", "Buildings", 0.6, "Rejected", "2026-08-11"),
+        ("CR-0126", "Inlet separator upsizing", "Process units", 5.3, "Approved", "2026-07-30"),
+    ]
+    df = pd.DataFrame(rows, columns=["ID", "Change", "Area", "Value", "Status", "Raised"])
+    df["Raised"] = pd.to_datetime(df["Raised"])
+    return df
+
+
+def column_mapping() -> pd.DataFrame:
+    return pd.DataFrame({
+        "Field": ["Posting date", "Activity code", "Amount", "Currency", "Vendor", "Document number"],
+        "File column": ["Post_Date", "WBS_Element", "Amt_LC", "Curr", "Vendor_Name", "Doc_No"],
+        "Required": [True, True, True, True, False, False],
+    })
+
+
+def import_review() -> dict:
+    return {"rows": 1282, "matched": 1264, "unmatched": 18}
+
+
+def unmatched_rows() -> pd.DataFrame:
+    return pd.DataFrame({
+        "Document": ["5100048812", "5100048846", "5100048901", "5100048977"],
+        "Vendor": ["Northline Fabrication", "Halvorsen Electric", "Northline Fabrication", "Trident Survey"],
+        "Activity code": ["KGP-4.2.9", "KGP-6.1.7", "KGP-4.2.9", "KGP-9.0.1"],
+        "Amount": [0.21, 0.14, 0.18, 0.07],
+        "Assign to activity": ["", "Electrical distribution", "", ""],
+    })
+
+
+def close_checklist() -> list[dict]:
+    return [
+        {"label": "Actuals and commitments imported", "status": "good",
+         "detail": "1,264 rows applied for the period", "meta": "02 Nov"},
+        {"label": "Contractor progress reports accepted", "status": "good",
+         "detail": "6 of 6 submissions reviewed", "meta": "04 Nov"},
+        {"label": "Forecast updated for every activity", "status": "warning",
+         "detail": "2 activities still carry last month's forecast", "meta": "12 of 14"},
+        {"label": "Budget, forecast and source totals reconcile", "status": "critical",
+         "detail": "Imported actuals differ from the source total by $0.6M", "meta": "Blocking"},
+        {"label": "Change register reviewed", "status": "good",
+         "detail": "2 pending requests carried forward", "meta": "05 Nov"},
+        {"label": "Period comments written", "status": "neutral",
+         "detail": "Needed for the monthly report", "meta": "Not started"},
     ]

@@ -1,7 +1,9 @@
-"""Copy the design system into a Streamlit project. Never overwrites existing files.
+"""Copy the design system into a Streamlit project. Never overwrites existing files,
+unless --update is given, which refreshes the ui_kit/*.py files only (use it after the
+skill itself has been updated; it replaces any local edits to ui_kit).
 
 Usage (from the project root):
-    python .github/skills/streamlit-dashboard-design/scripts/install.py [target_dir]
+    python .github/skills/streamlit-dashboard-design/scripts/install.py [target_dir] [--update]
 
 Creates in the target (default: current directory):
     .streamlit/config.toml     theme + bundled font declaration
@@ -27,10 +29,16 @@ PLAN = [
 
 
 def main() -> int:
-    target = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+    args = [a for a in sys.argv[1:] if a != "--update"]
+    update = "--update" in sys.argv[1:]
+    target = Path(args[0] if args else ".").resolve()
     skipped = []
     for src, dst in PLAN:
         out = target / dst
+        if out.exists() and update and dst.startswith("ui_kit/"):
+            shutil.copyfile(ASSETS / src, out)
+            print(f"  updated: {dst}")
+            continue
         if out.exists():
             skipped.append(dst)
             print(f"  exists, left untouched: {dst}")
@@ -55,8 +63,8 @@ def main() -> int:
         import plotly  # noqa: F401
     except ImportError:
         print("Plotly is not installed: pip install plotly")
-    print("\nDone. Reference page: "
-          f"{ASSETS / 'example' / 'app.py'}")
+    print("\nDone. Reference app: "
+          f"{ASSETS / 'example'}  (copy app.py, sample_data.py and views/ to try it)")
     return 0
 
 
